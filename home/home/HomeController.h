@@ -7,6 +7,8 @@
 
 #import <UIKit/UIKit.h>
 
+typedef void(^FinishBlcok)(BOOL success);
+
 @interface HomeController : UIViewController
 
 @end

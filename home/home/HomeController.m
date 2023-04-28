@@ -10,6 +10,8 @@
 #import "AFourPingTransition.h"
 #import "PackagesDetailHeaderCell.h"
 #import "PackagesDetailCell.h"
+#import <MJRefresh/MJRefresh.h>
+#import <AFNetworking.h>
 
 @interface HomeController()<UITableViewDelegate,UITableViewDataSource>
 @property(nonatomic,strong)UIImageView *navBarHairlineImageView;
@@ -21,6 +23,7 @@
 
 @property (strong, nonatomic) UILabel *goodsNumLabel;
 @property (strong, nonatomic) UIView *cartView;
+@property (nonatomic, strong) NSMutableArray *dataArray;
 
 @end
 
@@ -30,6 +33,7 @@
     [self initData];
     [self initNav];
     [self initView];
+    [self setupRefresh];
 }
 
 -(void)initData{
@@ -82,6 +86,50 @@
 //    [cartView addGestureRecognizer:panRcognize];
     
 }
+
+/// 创建上下拉刷新
+- (void)setupRefresh {
+    self.tableView.mj_header = [MJRefreshNormalHeader headerWithRefreshingTarget:self refreshingAction:@selector(loadHeader)];
+    self.tableView.mj_header.automaticallyChangeAlpha = YES;
+    self.tableView.mj_footer = [MJRefreshAutoNormalFooter footerWithRefreshingTarget:self refreshingAction:@selector(loadFooter)];
+    self.tableView.mj_footer.automaticallyChangeAlpha = YES;
+}
+
+/// 加载下拉数据
+- (void)loadHeader {
+    __weak typeof(self)wself = self;
+    [self getList:^(BOOL success) {
+        __strong typeof(wself) strongSelf = wself;
+        if (success) {
+            [strongSelf.tableView.mj_header endRefreshing];
+            [strongSelf.tableView reloadData];
+        } else {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [strongSelf.tableView.mj_header endRefreshing];
+                [strongSelf.tableView reloadData];
+            });
+        }
+    }];
+}
+
+/// 加载上拉数据
+- (void)loadFooter {
+    __weak typeof(self)wself = self;
+    [self getList:^(BOOL success) {
+        __strong typeof(wself) strongSelf = wself;
+        if (success) {
+            [strongSelf.tableView.mj_footer endRefreshing];
+            [strongSelf.tableView reloadData];
+        } else {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [strongSelf.tableView.mj_footer endRefreshing];
+                [strongSelf.tableView reloadData];
+            });
+        }
+    }];
+
+}
+
 //设置圆角
 -(void)setRoundedCorners:(UIView*)view size:(CGSize)szie
 {
@@ -93,7 +141,7 @@
 -(void)loadNewData
 {
     self.page=0;
-    [self getList];
+    [self loadHeader];
 }
 -(void)initNav{
     
@@ -161,8 +209,26 @@
   
 }
 #pragma mark - Connect
--(void)getList
-{
+-(void)getList:(FinishBlcok)finishBlock{
+    __weak typeof(self) weakSelf = self;
+    NSString *requestURL = [NSString stringWithFormat:@"http://c.3g.163.com/nc/article/list/T1348648517839/0-20.html"];
+    [[AFHTTPSessionManager manager] GET:requestURL parameters:nil  progress:^(NSProgress * _Nonnull downloadProgress) {
+        
+    } success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        NSLog(@"success");
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (finishBlock) {
+                finishBlock(YES);
+            }
+        });
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        NSLog(@"failure");
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (finishBlock) {
+                finishBlock(NO);
+            }
+        });
+    }];
     
 }
 #pragma mark -- tableviewdelegate
